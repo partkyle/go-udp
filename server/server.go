@@ -3,15 +3,18 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
 )
 
 var (
-	host = flag.String("host", "127.0.0.1", "host to listen on")
+	logger = log.New(os.Stdout, "[udp-server] ", log.LstdFlags)
+
+	host = flag.String("host", "0.0.0.0", "host to listen on")
 	port = flag.Int("port", 0, "port to listen on")
+
+	blockSize = flag.Int("size", 1024, "block size to read packets on")
 )
 
 func main() {
@@ -24,7 +27,15 @@ func main() {
 		return
 	}
 
-	log.Printf("listening on %s", listener.LocalAddr())
+	logger.Printf("listening on addr=%s with block size=%d", listener.LocalAddr(), *blockSize)
 
-	io.Copy(os.Stdout, listener)
+	data := make([]byte, *blockSize)
+	for {
+		n, remoteAddr, err := listener.ReadFrom(data)
+		if err != nil {
+			logger.Fatalf("error during read: %s", err)
+		}
+
+		logger.Printf("<%s> %s", remoteAddr, data[:n])
+	}
 }
